@@ -1,0 +1,68 @@
+# disk
+
+# Inspect the vm disk. It has to be powered off.
+qemu-img info ubuntu_packer.qcow2
+
+    image: ubuntu_packer.qcow2
+    file format: qcow2
+    virtual size: 10 GiB (10737418240 bytes)
+    disk size: 104 MiB
+    cluster_size: 65536
+    backing file: /var/lib/libvirt/images/base/packer-ubuntu.img
+    backing file format: qcow2
+    Format specific information:
+        compat: 1.1
+        lazy refcounts: false
+        refcount bits: 16
+        corrupt: false
+
+
+# network bridge
+
+    bridge name     bridge id               STP enabled     interfaces
+    br0             8000.000c2977ffea       no              ens33
+                                                            vnet0
+
+# print mac table
+# the local interface are the "tap" interfaces on the bridge itself. Non local interfaces belong to the VM's.
+# in a live env, there should be many non local macs on port 1 which is the uplink to the physical LAN
+brctl showmacs br0
+
+    port no mac addr                is local?       ageing timer
+      1     00:0c:29:3c:7a:5e       no                 4.04
+      1     00:0c:29:77:ff:ea       yes                0.00
+      1     00:0c:29:77:ff:ea       yes                0.00
+      1     00:50:56:c0:00:01       no                 0.00
+      2     52:54:00:8f:a9:21       no                68.06
+      2     fe:54:00:8f:a9:21       yes                0.00
+      2     fe:54:00:8f:a9:21       yes                0.00
+
+
+# VM console from the KVM host
+virsh console <domain>
+
+
+# interactive install with ubuntu live server iso. This will connect to serial console just like the "virsh console".
+# where you can use "basic" or "rich" mode.
+#
+# the main issue I had wit this method was that virt-install doesn't understand the ubuntu ISO. It can't find the hw-vmlinuz and hwe-initrd.
+# The errors were't obvious but this is an example how to make it work.
+
+# This will create a full copy of an ubuntu instance. you could probably create the virtual disk ahead of time with qemu-img create
+# and base it on a parent image and then use that here to get a "linked clone" via "backing file". That will make the qcow2 disk
+# usage alot smaller. Not matter what, qcow2 is always "thin" or "Copy on Write". It doesnt allocate spaces until it has something to write
+# if you look at the space usage with ls -lh, youll see the full allocation but if we inspect it with qemu-img or du -h we can see its actual
+# allocated spaces and usage.
+virt-install \
+-n ubuntu02 \
+--description "Test" \
+--os-type Linux \
+--os-variant ubuntu20.04 \
+--memory 2048 \
+--vcpus 2 \
+--disk path=/var/lib/libvirt/images/ubuntu02.qcow2,bus=virtio,size=25 \
+--graphics none \
+--network bridge:br0 \
+--location /home/neo/ubuntu-20.04.3-live-server-amd64.iso,kernel=casper/hwe-vmlinuz,initrd=casper/hwe-initrd \
+--noreboot \
+--extra-args 'console=ttyS0,115200n8 serial autoinstall'

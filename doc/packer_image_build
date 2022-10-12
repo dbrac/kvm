@@ -1,0 +1,57 @@
+builds vm's, configures and installs packages, runs scripts, etc. and then produces a "golden" disk image.
+Lots of supported formats such as vmdk, raw and qcow2. We are using the qemu builder to produce a qcow2 disk image.
+
+Essential terminology: https://www.packer.io/docs/terminology
+
+The packer build needs an account it can SSH with so one way we can accomdate is to use cloud init from within the packer
+build to create the user. When using "nocloud" in cloud init, we can provide the user-data and meta-data in several ways.
+Commonly done via an ISO called ci-data.iso but we can also provide the data vi smbios in the "serial" key. The below example
+shows how this works. The "http_directory" key defines a dir we can expose over http. The HTTPIP and HTTPPort variables become
+available which resolve to this http dir. Inside of this dir we store the user-data and meta-data files which we can provide
+to "seedfrom": -smbios type=1,serial=ds=nocloud-net;s=http://10.10.0.1:8000/. https://cloudinit.readthedocs.io/en/latest/topics/datasources/nocloud.html.
+
+If we inspect the VM while its being build, you will see this in the bios data like this:
+
+    dmidecode
+    search for Serial Number. I think it was under the "system information" section.
+
+example:
+
+packer build
+
+variable "blah" {
+  type    = string
+  default = "blabla"
+}
+
+source "qemu" "k8s_image" {
+  iso_url           = "https://cloud-images.ubuntu.com/releases/focal/release/ubuntu-20.04-server-cloudimg-amd64.img"
+  iso_checksum      = "file:https://cloud-images.ubuntu.com/releases/focal/release/SHA256SUMS"
+  disk_size         = "5000M"
+  disk_image        = true
+  disk_discard      = "unmap"
+  http_directory    = "data"
+  memory            = "4096"
+  cpus              = "2"
+  format            = "qcow2"
+  accelerator       = "kvm"
+  ssh_username      = "packer"
+  ssh_password      = "thisok"
+  ssh_timeout       = "20m"
+  disk_interface    = "virtio-scsi"
+  qemuargs          = [["-smbios", "type=1,serial=ds=nocloud-net;instance-id=packer;seedfrom=http://{{ .HTTPIP }}:{{ .HTTPPort }}/cloud-data/"]]
+}
+
+build {
+  sources = ["source.qemu.k8s_image"]
+
+  provisioner "shell" {
+    inline = [
+      "sudo rm -rf /var/lib/cloud",
+      "sudo mkdir /etc/packerdir",
+      "sudo apt-get update && sudo apt-get install curl",
+      "sudo userdel --force --remove packer"
+    ]
+    remote_folder="/tmp"
+  }
+}

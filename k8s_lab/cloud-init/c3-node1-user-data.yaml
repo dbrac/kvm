@@ -1,0 +1,25 @@
+#cloud-config
+
+users:
+  - name: darrin
+    ssh_authorized_keys:
+      ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCxRtnWSELWoVdQTKnJhL4xt0eQje9SZxfht2y2aog7GcXVwZ8SXal2ZJWlTSFCf9/J+TsL1/aZa2wr5AsGLE52huYEutkZ6QYeZ4SVrvyqgy1ERknlBh5/qEQZuxS5rOoQilaaC9PmxRJRFVFWPywIwflmP5nubwUUaILVCvmBBVdi2RwjxeIcepsdHIG5KwTPV6NdrxFaeaW4cKCEHESybuvATX4fRayhGFM5lAxaje5pF8yDj490/WeJNkwgJwh9fGxe6quX6Y5bJCSkluMtvnXiZrdN8eJoeRB0dbIbRt9edukyNR3ltlkuz6uERkU5lwFRNNO+RfuRiemhvsoNqlV38uLNa93cp2+0DhqHhDgE3ct7Iix0htuXJEF/as4dXXuCaIm2F+AD+9d5d83YTCr8cKhf7BM51Bo268XrHEYwg6pyCaxRKy47wyTYKmdArt9gyPei55VPX2zkEGcb19+YLr+URqgMDb3pv/KAhx24pbXyRRlYRaq6pb2zRQDc4eQISIub5k7IFdAp4YPemrklgUXQFmRq/ohWw30z77z3Jl+TNc9H/xNcjyq3GJGGHFgDl7CdduT1atc8udIErO+151E8LxYTIQdcRCTD5GeIuZl5xbWE7D/RJIyiPnT9QpYzieyKPTD4oVCIiFTtAsX7WykS0iHCNSMJGZYJdQ== neo@kvmmatrix
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    groups: sudo
+    shell: /bin/bash
+    passwd: $6$rounds=4096$n9OTK2US/Pv62D5c$SZfLTQyhphccvEVAbfzHQs6rlJ99tk6S0TJrQLjKzTLkbl0irrmuY9fwAeXPgAXp1itrx1cNCTVUHm3tfw8KU1
+    lock_passwd: true
+  - name: russel
+    sudo: [ 'ALL=(ALL) NOPASSWD:ALL' ]
+    groups: sudo
+    shell: /bin/bash
+    passwd: $6$rounds=4096$n9OTK2US/Pv62D5c$SZfLTQyhphccvEVAbfzHQs6rlJ99tk6S0TJrQLjKzTLkbl0irrmuY9fwAeXPgAXp1itrx1cNCTVUHm3tfw8KU1
+    lock_passwd: false
+
+hostname: c3-node1
+packages:
+  - net-tools
+runcmd:
+ - mkdir -p /etc/blah
+ - mkdir -p /blah
+ - echo "blah" >> /etc/blah/blah

@@ -1,0 +1,119 @@
+### CPU ###
+
+The easiest thing to do is edit the xml directly and shutdown/start the vm
+
+    virsh edit <vm name>
+    virsh shudown <vm>
+    virsh start <vm>
+
+alternatively, you can use virsh setvcpus. You have to first modify the maximum number of vcpus, then set the actual
+desired number of vcpus and last completly stop and then start the VM. restart doesnt work
+
+    virsh setvcpus c3-cp1 4 --maximum --config
+    virsh vcpucount c3-cp1
+        maximum      config         4
+        maximum      live           2
+        current      config         2
+        current      live           2
+
+    virsh setvcpus c3-cp1 4 --config
+    virsh vcpucount c3-cp1
+        maximum      config         4
+        maximum      live           2
+        current      config         4
+        current      live           2
+
+There is hot add support but you have to do have already set the maximum number of vCPU's to the desired number. So,
+when you initially build the VM's I assume there is a --maximum you can set greater than the configured count which you
+would probably set equal to the number of physical CPU's or your own desired maximum. Then this will position you to
+hot add CPU's later if needed. Otherwise you still have to shtudown the VM to modify the maximum config anyway.
+
+
+    virsh setvcpus c3-cp1 4 --maximum --config
+    virsh shutdown c3-cp1
+    virsh start c3-cp1
+
+    now our max/live should equal 4 so we can do this:
+    virsh setvcpus c3-cp1 4 --live
+
+    last we have to bring the CPU's online inside the guest. They will be offline by default. use lscpu to identify which
+    cpus are offline
+
+    lscpu
+    chcpu -e 2
+    chcpu -e 3
+
+### Memory ###
+
+Don't see a way to adjust the maximum within virsh cli. Use virsh edit to modify the xml, increase the ram allocation
+and then shtudown/start the VM. Thats it. It supposedly supports hotadd but only if the maximum is already defined. If
+its defined, you can hot add up to the maximum (did not test it).
+
+### disk ###
+
+We can do it with qemu-img or virsh.
+
+# qemu-img method
+identifiy the path to the vdisk "qcow2 or raw". Supposedly even vmdk is supported.
+
+virsh shutdown c3-node1 (if it has a lock on the qcow file we can't do anything)
+virsh domblklist c3-node1
+     Target   Source
+    -----------------------------------------------------------
+     vda      /var/lib/libvirt/images/c3-node1/c3-node1.qcow2
+     sda      /var/lib/libvirt/images/c3-node1/cidata.iso
+
+sudo qemu-img info /var/lib/libvirt/images/c3-node1/c3-node1.qcow2
+
+make sure we don't have any snapshots or else we can't modify the vdisk
+    sudo virsh snapshot-list c3-node1
+
+Add 10GB
+    sudo qemu-img resize /var/lib/libvirt/images/c3-node1/c3-node1.qcow2 +10G
+
+Thats it. The partition and filesystem in the guest will reflect this increase when its started.
+
+    virsh start c3-node1
+
+inside the guest
+
+    lsblk
+    NAME    MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+    vda     252:0    0   20G  0 disk
+    ├─vda1  252:1    0 19.9G  0 part /
+    ├─vda14 252:14   0    4M  0 part
+    └─vda15 252:15   0  106M  0 part /boot/efi
+
+# virsh method
+
+VM should be running for this
+
+virsh domblklist c3-node1
+     Target   Source
+    -----------------------------------------------------------
+     vda      /var/lib/libvirt/images/c3-node1/c3-node1.qcow2
+     sda      /var/lib/libvirt/images/c3-node1/cidata.iso
+
+virsh blockresize c3-node1 /var/lib/libvirt/images/c3-node1/c3-node1.qcow2 40G
+
+The partition/filesystem isn't automatically extended using this method. Rebooting seemed to extend it automatically
+otherwise we need to use one of many options in the guest to extend it. I discovered a handy tool "growpart" quite a bit
+easier than remembering the parted commands.
+
+grow partition 1 to use all available disk size
+    sudo growpart /dev/vda 1
+
+now rezise the fs
+   sudo resize2fs /dev/vda1
+
+### cdrom ###
+# how to eject the cdrom if we leave it attached during at build time
+# assuming this will break the hot/cold migration that i haven't tested yet but perhaps not
+# cloud init seems to not have any issues with detaching this. Seems like it only uses it on the first boot and not
+# subseqent boots
+
+virsh change-media c3-cp1 /var/lib/libvirt/images/c3-cp1/cidata.iso --eject
+Successfully ejected media.
+
+
+

@@ -1,0 +1,38 @@
+# qemu-kvm
+you can run qemu by itself without kvm but it will be type 2 hypervisor. KVM provides type 1 direct access to CPU/RAM.
+Description: QEMU Full virtualization on x86 hardware
+ QEMU is a fast processor emulator.  This package provides just a wrapper
+ script /usr/bin/kvm which run qemu-system-x86 in kvm mode for backwards
+ compatibility.
+
+# libvirt (libvirt )
+https://libvirt.org/docs.html
+installing libvirt-daemon-system gives you the daemon and a bunch of virt-* tools (not virt-inst though). It does give you
+virt-inst. libvirt-daemon-system depends on libvirt-clients so this gets installed and gives us virsh.
+
+# virtinst
+https://virt-manager.org/
+provides virt-install plus some other vrit-* tools including virt-viewer with can provide a lightweight ui console to
+the vm similiar to virt-manager but it only provides console. There are alot of other virt-* tools you can install such
+as virt-manager described below. These are the tools that libvirt supports: https://libvirt.org/apps.html. There are alot
+from simple single purpose cli utilities to full wrapper solutions like openstack.
+
+# virt-manager
+https://virt-manager.org/
+provided by the same party as virtinst, this is the full UI guest management utility. (perf charts, console, config editor, etc.)
+
+# genisoimage
+We can use this to build the ci-data.iso (user-data and meta-data) for cloud init in the ubuntu cloud image. Unfortunatly,
+the way cloud init genisoimage works, we don't have a way to pass in the netplan config so we need to use cloud-utils. We
+mount this iso to a VM who is configured to boot from a cloud image and it will read the iso and configure itself.
+
+# cloud-utils
+Does the same thing as genisoimage but has the --network-config where we can pass in the netplan config.
+
+# packer
+users a functioning QEMU/KVM system along with either an ubuntu image or iso to create an Ubuntu VM, apply config, run scripts
+install packages, etc. and then convert it into a disk image. We are creating qcow2 images which function as copy on write/sparse
+(aka vmware linked clone/thin disk)
+
+# cloud init
+built into ubuntu and reads "user-data" and "meta-data" config passed in via ci-data.iso or some other method.
